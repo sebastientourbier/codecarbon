@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -9,16 +13,22 @@ import numpy as np
 from datetime import date
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
-
+#Common variables
+#******************************************************************************
 # colors
-color1 = '#024758'
-color2 = '#c9fb37'
-color3 = '#226a7a'
+
 darkgreen = '#024758'
 vividgreen = '#c9fb37'
 color3 = '#226a7a'
 titleColor = '#d8d8d8'
+# config (prevent default plotly modebar to appears, disable zoom on figures, set a double click reset ~ not working that good IMO )
 
+config = {'displayModeBar': False,'scrollZoom':False, 'doubleClick':'reset'}
+
+
+# App
+#*******************************************************************************
+#*******************************************************************************
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
                 meta_tags=[{'name': 'viewport',
@@ -26,7 +36,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
                 )
 
 colors = {
-    'background': '#024758',
+    'background': darkgreen,
     'text': 'white'
 }
 
@@ -40,29 +50,24 @@ df.timestamp = pd.to_datetime(df.timestamp)
 # ******************************************************************************
 
 card_household = dbc.Card([
-                            dbc.CardImg(src="/assets/house_icon.png",
-                                        top=True, bottom=False),
-                            dbc.CardBody([
-                                html.H4(id='houseHold'),
+                            dbc.CardImg(src="/assets/house_icon.png", top=True, bottom=False),
+                            dbc.CardBody([html.H4(id='houseHold'),
                                 html.P("of an american household weekly energy consumption", className="card-title")])
-                        ], color=color1, outline=False)
+                        ], color=darkgreen, outline=False)
 
 card_car = dbc.Card([
-                            dbc.CardImg(src="/assets/car_icon.png",
-                                        top=True, bottom=False),
+                            dbc.CardImg(src="/assets/car_icon.png",top=True, bottom=False),
                             dbc.CardBody([
                                 html.H4(id='car'),
                                 html.P("miles driven", className="card-title")])
-                        ], color=color1, outline=False)
+                        ], color=darkgreen, outline=False)
 
 card_tv = dbc.Card([
-                            dbc.CardImg(src="/assets/tv_icon.png",
-                                        top=True, bottom=False),
+                            dbc.CardImg(src="/assets/tv_icon.png",top=True, bottom=False),
                             dbc.CardBody([
                                 html.H4(id='tv'),
                                 html.P("of TV", className="card-title")])
-
-                    ], color=color1, outline=False)
+                    ], color=darkgreen, outline=False)
 
 
 # Layout section: Bootstrap (https://hackerthemes.com/bootstrap-cheatsheet/)
@@ -85,27 +90,26 @@ app.layout = dbc.Container([
                         initial_visible_month=date.today(),
                         end_date=date.today())
         ], xs=12, sm=12, md=12, lg=4, xl=4),  # if small screen the col would take the full width
-        # holding indicators graph
-       dbc.Col(dcc.Graph(id='indicators'), xs=12, sm=12, md=12, lg=8, xl=8
-       )
+        # holding indicators cards
+        dbc.Col(dbc.CardGroup([
+            dbc.Card([dbc.CardBody([html.P("Energy consumed", style={'textAlign':'center'}), html.H3(id='Tot_Energy_Consumed', style={'textAlign':'center'}),html.P("kWh", style={'textAlign':'center'})])], color=darkgreen),
+            dbc.Card([dbc.CardBody([html.P("Emissions produced", style={'textAlign':'center'}),html.H4(id='Tot_Emissions', style={'textAlign':'center'}),html.P("Kg. Eq. CO2", style={'textAlign':'center'})])], color=darkgreen),
+            dbc.Card([dbc.CardBody([html.P("Cumulative duration", style={'textAlign':'center'}),html.H4(id='Tot_Duration', style={'textAlign':'center'}),html.P(id='Tot_Duration_unit', style={'textAlign':'center'})])], color=darkgreen)
+            ]))
     ]),
 
     dbc.Row([
         # holding project selector
         dbc.Col(
                 dcc.RadioItems(id='projectPicked',
-                            options=[{'label': projectName, 'value': projectName}
-                                for projectName in df.project_name.unique()],
-                            value=df.project_name.unique().tolist()[0],
-                            labelClassName="mr-3"
+                            options=[{'label': projectName, 'value': projectName} for projectName in df.project_name.unique()],
+                            value=df.project_name.unique().tolist()[0], labelClassName="mr-3"
                              ), xs=12, sm=12, md=12, lg=4, xl=4
-
-
-        ),
+                ),
         # horlding pieCharts
         dbc.Col(
-                dcc.Graph(id='pieCharts'), xs=12, sm=12, md=12, lg=8, xl=8
-        )
+                dcc.Graph(id='pieCharts', config=config), xs=12, sm=12, md=12, lg=8, xl=8
+                )
     ]),
 
     dbc.Row([
@@ -114,17 +118,17 @@ app.layout = dbc.Container([
                     dbc.Col(card_household, width={"size": 2, "offset": 0}),
                     dbc.Col(card_car, width=2),
                     dbc.Col(card_tv, width=2),
-                    #holding bar graph
-                    dbc.Col(dcc.Graph(id='barChart',clickData=None,config={'scrollZoom':False, 'doubleClick':'reset'}),width={"size":6,"offset":0})
+         #holding bar graph
+                    dbc.Col(dcc.Graph(id='barChart',clickData=None,config=config),width={"size":6,"offset":0})
     ]),
     
     
      dbc.Row([
          #holding bubble chart
                 dbc.Col(dcc.Graph(id='bubbleChart', clickData=None, hoverData=None, figure={}, 
-                          config={'scrollZoom':False, 'doubleClick':'reset'}),width=6),
+                          config=config),width=6),
          #holding line chart
-               dbc.Col(id='line_container', children=[], width=6)
+               dbc.Col(dcc.Graph(id='lineChart', config=config),  width=6)
                         
     ]),
          #holding carbon emission map
@@ -150,7 +154,10 @@ app.layout = dbc.Container([
 # indicators
 # -------------------------------------------------------------------------
 @ app.callback(
-    Output(component_id='indicators', component_property='figure'),
+    [Output(component_id='Tot_Energy_Consumed', component_property='children'),
+    Output(component_id='Tot_Emissions', component_property='children'),
+    Output(component_id='Tot_Duration', component_property='children'),
+    Output(component_id='Tot_Duration_unit', component_property='children')],
     [Input(component_id='periode', component_property='start_date'),
     Input(component_id='periode', component_property='end_date')]
 )
@@ -159,41 +166,30 @@ def update_indicator(start_date, end_date):
     dff = df.copy()
     dff = dff[dff['timestamp'] > start_date][dff['timestamp'] < end_date]
 
-    # graph
-    figIndic = make_subplots(rows=1, cols=3, specs=[
-                    [{'type': 'domain'}, {'type': 'domain'}, {'type': 'domain'}]])
+    # Tot_Energy consumed card
+    
+    Tot_energy_consumed = str(round(dff.energy_consumed.sum(),2)) 
+    
+    # Tot Emissions card
+    
+    Tot_emissions = str(round(dff.emissions_sum.sum(),2)) 
+    
+    # Tot_Duration cards
+    
+    tot_duration_min = round(dff.duration.sum()/60)
+    tot_duration = str(tot_duration_min) 
+    tot_duration_unit = 'min'
+    if tot_duration_min >= 60:
+        tot_duration_hours = round(tot_duration_min / 60)
+        tot_duration= str(tot_duration_hours) 
+        tot_duration_unit = 'H'
+        if tot_duration_hours >= 24:
+            tot_duration_days = round(tot_duration_hours / 24)
+            tot_duration = str(tot_duration_days) 
+            tot_duration_unit = 'days'
+            
 
-    figIndic.add_trace(go.Indicator(value=dff.energy_consumed.sum(),
-                         title={
-                             "text": "Energy Consumed<br><span style='font-size:0.8em;color:gray'>kWh</span>"},
-                          ), row=1, col=1)
-    figIndic.add_trace(go.Indicator(value=dff.emissions_sum.sum(),
-                           title={
-                               "text": "Emissions<br><span style='font-size:0.8em;color:gray'>kg eq.C02</span>"},
-                          ), row=1, col=2)
-    figIndic.add_trace(go.Indicator(value=round(dff.duration.sum()/60, 0),
-                           title={
-                               "text": "Duration<br><span style='font-size:0.8em;color:gray'>min.</span>"},
-                          ), 1, 3)
-
-    figIndic.update_layout(
-                    title_text="GLOBAL ",
-                    title_font_color='#d8d8d8',
-
-                    font=dict(color='white'),
-                    height=250,
-                    margin=dict(
-                    l=10,
-                    r=10,
-                    b=10,
-                    t=40,
-                    pad=4
-                    ),
-                    paper_bgcolor=color1,
-                    showlegend=False,
-                    )
-
-    return figIndic
+    return Tot_energy_consumed, Tot_emissions, tot_duration, tot_duration_unit
 
 
 # pieCharts and cards
@@ -246,25 +242,27 @@ def update_Charts(start_date, end_date, project):
     ##PieChart
     figPie=make_subplots(rows=1, cols=3, specs=[
                         [{'type': 'domain'}, {'type': 'domain'}, {'type': 'domain'}]])
-    figPie.add_trace(go.Pie(values=[energyConsumed, dff.energy_consumed.sum()-energyConsumed], name="energy consumed",
-                     textinfo='none', hole=.8, marker=dict(colors=[color2, color3]), title=''), row=1, col=1)
+    figPie.add_trace(go.Pie(values=[energyConsumed, dff.energy_consumed.sum()-energyConsumed], name="",
+                     textinfo='none', hole=.8, marker=dict(colors=[vividgreen, color3]), title='',hoverinfo='skip'), row=1, col=1)
     figPie.add_trace(go.Pie(values=[emission, dff.emissions_sum.sum(
-    )-emission], name="emission", textinfo='none', hole=.8, marker=dict(colors=[color2, color3])), row=1, col=2)
-    figPie.add_trace(go.Pie(values=[duration, (dff.duration.sum()-duration)], name="duration",
-                     textinfo='none', hole=.8, marker=dict(colors=[color2, color3])), row=1, col=3)
+    )-emission], name="", textinfo='none', hole=.8, marker=dict(colors=[vividgreen, color3]), hoverinfo='skip'), row=1, col=2)
+    figPie.add_trace(go.Pie(values=[duration, (dff.duration.sum()-duration)], name="",
+                     textinfo='none', hole=.8, marker=dict(colors=[vividgreen, color3]), hoverinfo="skip"), row=1, col=3)
 
 
     figPie.update_layout(
         title_text=project,
-        title_font_color='#d8d8d8',
+        title_font_color=titleColor,
         font=dict(color='white'),
-        paper_bgcolor=color1,
+        paper_bgcolor=darkgreen,
         showlegend=False,
-        annotations=[dict(text=string1, font=dict(color='white',), x=0.05, y=0.5, font_size=20, showarrow=False), dict(
-            text=string2, x=0.5, y=0.5, font_size=20, showarrow=False), dict(text=string3, font=dict(color='white',), x=0.93, y=0.5, font_size=20, showarrow=False), ],
+        annotations=[dict(text=string1, font=dict(color='white',), x=0.07, y=0.5, font_size=20, showarrow=False), dict(
+            text=string2, x=0.5, y=0.5, font_size=20, showarrow=False), dict(text=string3, font=dict(color='white',), x=0.92, y=0.5, font_size=20, showarrow=False), ],
         margin=dict(l=10, r=10, b=10, t=40, pad=4),
         height=200)
+    
     #barChart
+    
     dfBar = dff[dff['project_name']==project].groupby('experiment_name').agg({'timestamp': min, 'duration': sum, 'emissions_sum':sum, 'energy_consumed':sum, 'experiment_description': lambda x: x.iloc[0]}).reset_index()
     
     figBar = px.bar(dfBar, x='experiment_name', y='emissions_sum', text='emissions_sum')
@@ -321,19 +319,22 @@ def uppdate_bubblechart(clickPoint, start_date, end_date,project):
 # Line Chart
 #---------------------------------------------------------------------------------
 @ app.callback(
-    Output(component_id='line_container', component_property='children'),
+    Output(component_id='lineChart', component_property='figure'),
     Input(component_id='bubbleChart', component_property='clickData'),
      Input(component_id='periode', component_property='start_date'),
      Input(component_id='periode', component_property='end_date'),
      Input(component_id='barChart', component_property='clickData'),
-     prevent_initial_call=True
+     Input(component_id='projectPicked', component_property='value')
     )
 
-def uppdate_linechart(clickPoint, start_date, end_date,experiment_selected):
+def uppdate_linechart(clickPoint, start_date, end_date,experiment_clickPoint,project):
     dff = df.copy()
     dff = dff[dff['timestamp'] > start_date][dff['timestamp'] < end_date]
-    
-    if clickPoint is None:
+    if experiment_clickPoint is None:
+        default_experiment_name = dff[dff['project_name']==project]['experiment_name'].unique()[0] 
+        run_name = dff[dff['experiment_name']==default_experiment_name]['run_id'].unique()[-1] #showing the last run of default project
+    elif clickPoint is None:
+        experiment_selected = experiment_clickPoint['points'][0]['x']
         run_name = dff[dff['experiment_name']==experiment_selected]['run_id'].unique()[0]
     else:
         run_name= clickPoint['points'][0]['customdata']
@@ -346,7 +347,9 @@ def uppdate_linechart(clickPoint, start_date, end_date,experiment_selected):
     line.update_yaxes(showgrid=False, visible=False, title="emissions (kg eq. C02)")
     
     
-    return dcc.Graph(id='lineChart', figure=line)
+    return line
+
+
 
 # Carbon Emission Map
 #---------------------------------------------------------------------------------
@@ -410,3 +413,10 @@ def update_map(start_date,end_date,project,kpi):
 
 if __name__ == '__main__':
     app.run_server(debug=True, use_reloader=False)
+
+
+
+
+
+
+
